@@ -19,6 +19,14 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onApplyFilter, isLoading }) =
     { name: 'Anime', prompt: 'Give the image a vibrant Japanese anime style, with bold outlines, cel-shading, and saturated colors.' },
     { name: 'Lomo', prompt: 'Apply a Lomography-style cross-processing film effect with high-contrast, oversaturated colors, and dark vignetting.' },
     { name: 'Glitch', prompt: 'Transform the image into a futuristic holographic projection with digital glitch effects and chromatic aberration.' },
+    { name: 'Vintage', prompt: 'Apply a classic vintage film look with faded colors, soft contrast, and a subtle grain effect.' },
+    { name: 'Noir', prompt: 'Convert the image to a high-contrast black and white noir style, with deep shadows and dramatic lighting.' },
+    { name: 'Watercolor', prompt: 'Transform the photo into a delicate watercolor painting with soft edges and blended colors.' },
+    { name: 'Pop Art', prompt: 'Give the image a vibrant Pop Art aesthetic, inspired by Andy Warhol, with bold, flat colors and strong outlines.' },
+    { name: 'Cyberpunk', prompt: 'Immerse the image in a high-tech, neon-lit cyberpunk world, with glowing holographic elements and a cool color palette.' },
+    { name: 'Impressionism', prompt: 'Render the image in an impressionistic painting style, with visible brushstrokes and an emphasis on light and color.' },
+    { name: 'Golden Hour', prompt: 'Bathe the image in the warm, soft, and magical light of the golden hour, enhancing yellows and oranges.' },
+    { name: 'Infrared', prompt: 'Simulate an infrared photo effect, making foliage white and skies dark, creating a surreal and dreamy landscape.' },
   ];
   
   const activePrompt = selectedPresetPrompt || customPrompt;
