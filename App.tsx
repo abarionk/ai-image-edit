@@ -15,6 +15,7 @@ import TransformPanel from './components/TransformPanel';
 import ErasePanel from './components/ErasePanel';
 import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, EraserIcon, SunIcon, PaletteIcon, CropIcon, FlipHorizontalIcon, UploadIcon, DownloadIcon, ResetIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
+import ZoomControls from './components/ZoomControls';
 
 // Helper to convert a data URL string to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
@@ -42,7 +43,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [editHotspot, setEditHotspot] = useState<{ x: number, y: number } | null>(null);
-  const [displayHotspot, setDisplayHotspot] = useState<{ x: number, y: number } | null>(null);
+  const [displayHotspot, setDisplayHotspot] = useState<{ imageX: number, imageY: number } | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('retouch');
   
   const [crop, setCrop] = useState<Crop>();
@@ -53,16 +54,26 @@ const App: React.FC = () => {
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
   const [erasePath, setErasePath] = useState<Array<{x: number, y: number}>>([]);
   
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
   const imgRef = useRef<HTMLImageElement>(null);
   const eraseCanvasRef = useRef<HTMLCanvasElement>(null);
   const erasePathRef = useRef<Array<{x: number, y: number}>>([]);
-
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef({ x: 0, y: 0 });
 
   const currentImage = history[historyIndex] ?? null;
   const originalImage = history[0] ?? null;
 
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+
+  const resetView = useCallback(() => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  }, []);
 
   const handleClearErase = useCallback(() => {
     erasePathRef.current = [];
@@ -73,6 +84,19 @@ const App: React.FC = () => {
         ctx?.clearRect(0, 0, canvas.width, canvas.height);
     }
   }, []);
+  
+  const handleTabChange = (tabId: Tab) => {
+    if (activeTab !== tabId) {
+        resetView();
+        // Reset tool-specific states when changing tabs
+        setEditHotspot(null);
+        setDisplayHotspot(null);
+        handleClearErase();
+        setCrop(undefined);
+        setCompletedCrop(undefined);
+        setActiveTab(tabId);
+    }
+  };
 
   // Effect to handle resizing of the erase canvas
   useEffect(() => {
@@ -146,7 +170,8 @@ const App: React.FC = () => {
     setCrop(undefined);
     setCompletedCrop(undefined);
     handleClearErase();
-  }, [handleClearErase]);
+    resetView();
+  }, [handleClearErase, resetView]);
 
   const handleGenerate = useCallback(async () => {
     if (!currentImage) {
@@ -413,8 +438,9 @@ const App: React.FC = () => {
       setEditHotspot(null);
       setDisplayHotspot(null);
       handleClearErase();
+      resetView();
     }
-  }, [canUndo, historyIndex, handleClearErase]);
+  }, [canUndo, historyIndex, handleClearErase, resetView]);
   
   const handleRedo = useCallback(() => {
     if (canRedo) {
@@ -422,8 +448,9 @@ const App: React.FC = () => {
       setEditHotspot(null);
       setDisplayHotspot(null);
       handleClearErase();
+      resetView();
     }
-  }, [canRedo, historyIndex, handleClearErase]);
+  }, [canRedo, historyIndex, handleClearErase, resetView]);
 
   const handleReset = useCallback(() => {
     if (history.length > 0) {
@@ -432,8 +459,9 @@ const App: React.FC = () => {
       setEditHotspot(null);
       setDisplayHotspot(null);
       handleClearErase();
+      resetView();
     }
-  }, [history, handleClearErase]);
+  }, [history, handleClearErase, resetView]);
 
   const handleUploadNew = useCallback(() => {
       setHistory([]);
@@ -443,7 +471,8 @@ const App: React.FC = () => {
       setEditHotspot(null);
       setDisplayHotspot(null);
       handleClearErase();
-  }, [handleClearErase]);
+      resetView();
+  }, [handleClearErase, resetView]);
 
   const handleDownload = useCallback(() => {
       if (currentImage) {
@@ -463,23 +492,31 @@ const App: React.FC = () => {
     }
   };
 
-  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    if (activeTab !== 'retouch') return;
+  const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (activeTab !== 'retouch' || !imgRef.current || !imageContainerRef.current) return;
     
-    const img = e.currentTarget;
-    const rect = img.getBoundingClientRect();
+    const img = imgRef.current;
+    const container = imageContainerRef.current;
+    const containerRect = container.getBoundingClientRect();
 
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
-    
-    setDisplayHotspot({ x: offsetX, y: offsetY });
+    const mouseX = e.clientX - containerRect.left;
+    const mouseY = e.clientY - containerRect.top;
+
+    const imageX = (mouseX - position.x) / scale;
+    const imageY = (mouseY - position.y) / scale;
+
+    if (imageX < 0 || imageY < 0 || imageX > img.clientWidth || imageY > img.clientHeight) {
+        return; 
+    }
+
+    setDisplayHotspot({ imageX, imageY });
 
     const { naturalWidth, naturalHeight, clientWidth, clientHeight } = img;
     const scaleX = naturalWidth / clientWidth;
     const scaleY = naturalHeight / clientHeight;
 
-    const originalX = Math.round(offsetX * scaleX);
-    const originalY = Math.round(offsetY * scaleY);
+    const originalX = Math.round(imageX * scaleX);
+    const originalY = Math.round(imageY * scaleY);
 
     setEditHotspot({ x: originalX, y: originalY });
   };
@@ -522,6 +559,106 @@ const App: React.FC = () => {
       setErasePath(erasePathRef.current);
   };
   
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+      if (activeTab === 'erase' || activeTab === 'crop') return;
+      e.preventDefault();
+      const container = imageContainerRef.current;
+      if (!container) return;
+  
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+  
+      const zoomFactor = 1.1;
+      const newScale = e.deltaY < 0 ? scale * zoomFactor : scale / zoomFactor;
+      const clampedScale = Math.max(1, Math.min(newScale, 10)); 
+  
+      if (clampedScale === scale) return;
+  
+      if (clampedScale <= 1) {
+          resetView();
+          return;
+      }
+  
+      const newX = mouseX - (mouseX - position.x) * (clampedScale / scale);
+      const newY = mouseY - (mouseY - position.y) * (clampedScale / scale);
+  
+      setScale(clampedScale);
+      setPosition({ x: newX, y: newY });
+  };
+
+  const handlePanMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+      if (scale > 1 && e.button === 0 && activeTab !== 'erase' && activeTab !== 'crop') {
+          e.preventDefault();
+          isPanningRef.current = true;
+          panStartRef.current = {
+              x: e.clientX - position.x,
+              y: e.clientY - position.y,
+          };
+          e.currentTarget.style.cursor = 'grabbing';
+      }
+  };
+
+  const handlePanMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+      if (isPanningRef.current) {
+          e.preventDefault(); // Prevents text selection and click event on drag
+          const newX = e.clientX - panStartRef.current.x;
+          const newY = e.clientY - panStartRef.current.y;
+          setPosition({ x: newX, y: newY });
+      }
+  };
+
+  const getCursor = useCallback(() => {
+    if (activeTab === 'retouch') return 'crosshair';
+    if (scale > 1) return 'grab';
+    return 'default';
+  }, [activeTab, scale]);
+
+  const handlePanEnd = (e: React.MouseEvent<HTMLDivElement>) => {
+      if (isPanningRef.current) {
+          isPanningRef.current = false;
+          e.currentTarget.style.cursor = getCursor();
+      }
+  };
+
+  const handleZoomIn = () => {
+    const container = imageContainerRef.current;
+    if (!container) return;
+
+    const { width, height } = container.getBoundingClientRect();
+    const centerX = width / 2;
+    const centerY = height / 2;
+    
+    const newScale = Math.min(scale * 1.25, 10);
+    const newX = centerX - (centerX - position.x) * (newScale / scale);
+    const newY = centerY - (centerY - position.y) * (newScale / scale);
+
+    setScale(newScale);
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handleZoomOut = () => {
+      const newScale = Math.max(scale / 1.25, 1);
+
+      if (newScale <= 1) {
+          resetView();
+          return;
+      }
+      
+      const container = imageContainerRef.current;
+      if (!container) return;
+
+      const { width, height } = container.getBoundingClientRect();
+      const centerX = width / 2;
+      const centerY = height / 2;
+      
+      const newX = centerX - (centerX - position.x) * (newScale / scale);
+      const newY = centerY - (centerY - position.y) * (newScale / scale);
+
+      setScale(newScale);
+      setPosition({ x: newX, y: newY });
+  };
+
   const tabs: { id: Tab, name: string, icon: React.FC<{className?: string}> }[] = [
     { id: 'retouch', name: 'Retouch', icon: MagicWandIcon },
     { id: 'erase', name: 'Erase', icon: EraserIcon },
@@ -542,33 +679,69 @@ const App: React.FC = () => {
   }
 
   const imageDisplay = (
-    <div className="relative w-full h-full">
-      {originalImageUrl && (
-          <img
-              key={originalImageUrl}
-              src={originalImageUrl}
-              alt="Original"
-              className="w-full h-full object-contain rounded-xl pointer-events-none"
-          />
-      )}
-      <img
-          ref={imgRef}
-          key={currentImageUrl}
-          src={currentImageUrl}
-          alt="Current"
-          onClick={handleImageClick}
-          className={`absolute top-0 left-0 w-full h-full object-contain rounded-xl transition-opacity duration-200 ease-in-out ${isComparing ? 'opacity-0' : 'opacity-100'} ${activeTab === 'retouch' ? 'cursor-crosshair' : ''} ${activeTab === 'erase' ? 'pointer-events-none' : ''}`}
-      />
-      {activeTab === 'erase' && !isLoading && (
-          <canvas
-              ref={eraseCanvasRef}
-              onMouseDown={handleEraseMouseDown}
-              onMouseMove={handleEraseMouseMove}
-              onMouseUp={handleEraseMouseUp}
-              onMouseLeave={handleEraseMouseUp}
-              className="absolute top-0 left-0 cursor-crosshair z-20"
-          />
-      )}
+    <div
+        ref={imageContainerRef}
+        className="relative w-full h-full overflow-hidden rounded-xl"
+        style={{ cursor: getCursor() }}
+        onWheel={handleWheel}
+        onMouseDown={handlePanMouseDown}
+        onMouseMove={handlePanMouseMove}
+        onMouseUp={handlePanEnd}
+        onMouseLeave={handlePanEnd}
+        onClick={handleImageClick}
+    >
+        <div 
+            className="relative w-full h-full"
+            style={{ 
+                transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, 
+                transformOrigin: '0 0',
+            }}
+        >
+            {originalImageUrl && (
+                <img
+                    key={`original-${originalImageUrl}`}
+                    src={originalImageUrl}
+                    alt="Original"
+                    className="absolute top-0 left-0 w-full h-full object-contain pointer-events-none"
+                    style={{ willChange: 'transform' }}
+                />
+            )}
+            <img
+                ref={imgRef}
+                key={currentImageUrl}
+                src={currentImageUrl}
+                alt="Current"
+                className={`w-full h-full object-contain transition-opacity duration-200 ease-in-out ${isComparing ? 'opacity-0' : 'opacity-100'}`}
+                style={{ willChange: 'transform' }}
+            />
+        </div>
+        
+        {activeTab === 'erase' && !isLoading && (
+            <canvas
+                ref={eraseCanvasRef}
+                onMouseDown={handleEraseMouseDown}
+                onMouseMove={handleEraseMouseMove}
+                onMouseUp={handleEraseMouseUp}
+                onMouseLeave={handleEraseMouseUp}
+                className="absolute top-0 left-0 cursor-crosshair z-20"
+            />
+        )}
+
+        {displayHotspot && !isLoading && activeTab === 'retouch' && (
+            <div 
+                className="absolute rounded-full w-6 h-6 bg-blue-500/50 border-2 border-white pointer-events-none -translate-x-1/2 -translate-y-1/2 z-10"
+                style={{ 
+                    left: `${position.x + displayHotspot.imageX * scale}px`, 
+                    top: `${position.y + displayHotspot.imageY * scale}px` 
+                }}
+            >
+                <div className="absolute inset-0 rounded-full w-6 h-6 animate-ping bg-blue-400"></div>
+            </div>
+        )}
+        
+        {activeTab !== 'erase' && activeTab !== 'crop' && (
+            <ZoomControls scale={scale} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onReset={resetView} />
+        )}
     </div>
   );
   
@@ -636,7 +809,7 @@ const App: React.FC = () => {
                   {tabs.map(tab => (
                       <li key={tab.id}>
                           <button
-                              onClick={() => setActiveTab(tab.id)}
+                              onClick={() => handleTabChange(tab.id)}
                               className={`w-full flex flex-col items-center gap-1 p-3 rounded-lg transition-all duration-200 ${
                                   activeTab === tab.id
                                       ? 'bg-blue-500/20 text-blue-300'
@@ -710,14 +883,6 @@ const App: React.FC = () => {
                   </ReactCrop>
                 ) : imageDisplay }
     
-                {displayHotspot && !isLoading && activeTab === 'retouch' && (
-                    <div 
-                        className="absolute rounded-full w-6 h-6 bg-blue-500/50 border-2 border-white pointer-events-none -translate-x-1/2 -translate-y-1/2 z-10"
-                        style={{ left: `${displayHotspot.x}px`, top: `${displayHotspot.y}px` }}
-                    >
-                        <div className="absolute inset-0 rounded-full w-6 h-6 animate-ping bg-blue-400"></div>
-                    </div>
-                )}
             </div>
 
             <div className="w-full flex-shrink-0 max-w-5xl">
