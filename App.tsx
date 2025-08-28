@@ -13,7 +13,7 @@ import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
 import TransformPanel from './components/TransformPanel';
 import ErasePanel from './components/ErasePanel';
-import { UndoIcon, RedoIcon, EyeIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, EraserIcon, SunIcon, PaletteIcon, CropIcon, FlipHorizontalIcon, UploadIcon, DownloadIcon, ResetIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 
 // Helper to convert a data URL string to a File object
@@ -521,11 +521,163 @@ const App: React.FC = () => {
       setIsDrawing(false);
       setErasePath(erasePathRef.current);
   };
+  
+  const tabs: { id: Tab, name: string, icon: React.FC<{className?: string}> }[] = [
+    { id: 'retouch', name: 'Retouch', icon: MagicWandIcon },
+    { id: 'erase', name: 'Erase', icon: EraserIcon },
+    { id: 'adjust', name: 'Adjust', icon: SunIcon },
+    { id: 'filters', name: 'Filters', icon: PaletteIcon },
+    { id: 'crop', name: 'Crop', icon: CropIcon },
+    { id: 'transform', name: 'Transform', icon: FlipHorizontalIcon },
+  ];
+
+  if (!currentImageUrl) {
+    return (
+      <div className="h-screen text-gray-100 flex flex-col">
+        <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center items-center`}>
+          <StartScreen onFileSelect={handleFileSelect} />
+        </main>
+      </div>
+    );
+  }
+
+  const imageDisplay = (
+    <div className="relative w-full h-full">
+      {originalImageUrl && (
+          <img
+              key={originalImageUrl}
+              src={originalImageUrl}
+              alt="Original"
+              className="w-full h-full object-contain rounded-xl pointer-events-none"
+          />
+      )}
+      <img
+          ref={imgRef}
+          key={currentImageUrl}
+          src={currentImageUrl}
+          alt="Current"
+          onClick={handleImageClick}
+          className={`absolute top-0 left-0 w-full h-full object-contain rounded-xl transition-opacity duration-200 ease-in-out ${isComparing ? 'opacity-0' : 'opacity-100'} ${activeTab === 'retouch' ? 'cursor-crosshair' : ''} ${activeTab === 'erase' ? 'pointer-events-none' : ''}`}
+      />
+      {activeTab === 'erase' && !isLoading && (
+          <canvas
+              ref={eraseCanvasRef}
+              onMouseDown={handleEraseMouseDown}
+              onMouseMove={handleEraseMouseMove}
+              onMouseUp={handleEraseMouseUp}
+              onMouseLeave={handleEraseMouseUp}
+              className="absolute top-0 left-0 cursor-crosshair z-20"
+          />
+      )}
+    </div>
+  );
+  
+  const cropImageElement = (
+    <img 
+      ref={imgRef}
+      key={`crop-${currentImageUrl}`}
+      src={currentImageUrl} 
+      alt="Crop this image"
+      className="w-full h-full object-contain rounded-xl"
+    />
+  );
+  
+  const renderActivePanel = () => {
+    switch (activeTab) {
+      case 'retouch':
+        return (
+          <div className="flex flex-col items-center gap-4">
+            <p className="text-md text-gray-400">
+              {editHotspot ? 'Great! Now describe your localized edit below.' : 'Click an area on the image to make a precise edit.'}
+            </p>
+            <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="w-full flex items-center gap-2">
+              <input
+                type="text"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder={editHotspot ? "e.g., 'change my shirt color to blue'" : "First click a point on the image"}
+                className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-lg p-5 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isLoading || !editHotspot}
+              />
+              <button
+                type="submit"
+                className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-5 px-8 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner disabled:from-blue-800 disabled:to-blue-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
+                disabled={isLoading || !prompt.trim() || !editHotspot}
+              >
+                Generate
+              </button>
+            </form>
+          </div>
+        );
+      case 'erase':
+        return <ErasePanel onApplyErase={handleApplyErase} onClearErase={handleClearErase} isLoading={isLoading} canErase={erasePath.length > 0} />;
+      case 'crop':
+        return <CropPanel onApplyCrop={handleApplyCrop} onSetAspect={setAspect} isLoading={isLoading} isCropping={!!completedCrop?.width && completedCrop.width > 0} />;
+      case 'adjust':
+        return <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} />;
+      case 'filters':
+        return <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} />;
+      case 'transform':
+        return <TransformPanel onTransform={handleTransform} isLoading={isLoading} />;
+      default:
+        return null;
+    }
+  };
 
 
-  const renderContent = () => {
-    if (error) {
-       return (
+  return (
+    <div className="h-screen text-gray-100 flex flex-col md:flex-row">
+      <aside className="w-full md:w-28 bg-black/20 border-b-2 md:border-b-0 md:border-r-2 border-gray-800/70 p-3 flex md:flex-col gap-4">
+          <div className="hidden md:block text-center pt-1">
+              <h2 className="text-xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-cyan-300">Pixshop</h2>
+          </div>
+          <nav className="flex-grow">
+              <ul className="flex flex-row md:flex-col justify-around md:justify-start gap-2">
+                  {tabs.map(tab => (
+                      <li key={tab.id}>
+                          <button
+                              onClick={() => setActiveTab(tab.id)}
+                              className={`w-full flex flex-col items-center gap-1 p-3 rounded-lg transition-all duration-200 ${
+                                  activeTab === tab.id
+                                      ? 'bg-blue-500/20 text-blue-300'
+                                      : 'text-gray-400 hover:bg-white/10 hover:text-white'
+                              }`}
+                              aria-label={tab.name}
+                          >
+                              <tab.icon className="w-7 h-7" />
+                              <span className="text-xs font-semibold capitalize">{tab.name}</span>
+                          </button>
+                      </li>
+                  ))}
+              </ul>
+          </nav>
+          <div className="flex flex-row md:flex-col justify-around md:justify-start gap-2">
+                <button onClick={handleUndo} disabled={!canUndo} className="p-3 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Undo"><UndoIcon className="w-6 h-6 mx-auto" /></button>
+                <button onClick={handleRedo} disabled={!canRedo} className="p-3 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Redo"><RedoIcon className="w-6 h-6 mx-auto" /></button>
+                {canUndo && (
+                    <button
+                        onMouseDown={() => setIsComparing(true)}
+                        onMouseUp={() => setIsComparing(false)}
+                        onMouseLeave={() => setIsComparing(false)}
+                        onTouchStart={() => setIsComparing(true)}
+                        onTouchEnd={() => setIsComparing(false)}
+                        className="p-3 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white"
+                        aria-label="Compare with original"
+                    >
+                        <EyeIcon className="w-6 h-6 mx-auto" />
+                    </button>
+                )}
+                <button onClick={handleReset} disabled={!canUndo} className="p-3 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Reset All Changes"><ResetIcon className="w-6 h-6 mx-auto" /></button>
+                
+                <div className="h-full md:h-auto w-px md:w-full bg-gray-700 mx-2 md:mx-0 md:my-2"></div>
+                
+                <button onClick={handleUploadNew} className="p-3 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white" aria-label="Upload New Image"><UploadIcon className="w-6 h-6 mx-auto" /></button>
+                <button onClick={handleDownload} className="p-3 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white" aria-label="Download Image"><DownloadIcon className="w-6 h-6 mx-auto" /></button>
+          </div>
+      </aside>
+
+      <main className="flex-grow p-4 md:p-8 flex flex-col justify-center items-center overflow-hidden">
+        {error ? (
            <div className="text-center animate-fade-in bg-red-500/10 border border-red-500/20 p-8 rounded-lg max-w-2xl mx-auto flex flex-col items-center gap-4">
             <h2 className="text-2xl font-bold text-red-300">An Error Occurred</h2>
             <p className="text-md text-red-400">{error}</p>
@@ -536,202 +688,43 @@ const App: React.FC = () => {
                 Try Again
             </button>
           </div>
-        );
-    }
+        ) : (
+          <div className="w-full h-full max-w-screen-2xl flex flex-col items-center justify-center gap-6 animate-fade-in">
+              <div className="relative w-full flex-1 flex items-center justify-center min-h-0 bg-black/20 rounded-xl shadow-2xl">
+                {isLoading && (
+                    <div className="absolute inset-0 bg-black/70 z-30 flex flex-col items-center justify-center gap-4 animate-fade-in">
+                        <Spinner />
+                        <p className="text-gray-300">AI is working its magic...</p>
+                    </div>
+                )}
+                
+                {activeTab === 'crop' ? (
+                  <ReactCrop 
+                    crop={crop} 
+                    onChange={c => setCrop(c)} 
+                    onComplete={c => setCompletedCrop(c)}
+                    aspect={aspect}
+                    className="w-full h-full"
+                  >
+                    {cropImageElement}
+                  </ReactCrop>
+                ) : imageDisplay }
     
-    if (!currentImageUrl) {
-      return <StartScreen onFileSelect={handleFileSelect} />;
-    }
+                {displayHotspot && !isLoading && activeTab === 'retouch' && (
+                    <div 
+                        className="absolute rounded-full w-6 h-6 bg-blue-500/50 border-2 border-white pointer-events-none -translate-x-1/2 -translate-y-1/2 z-10"
+                        style={{ left: `${displayHotspot.x}px`, top: `${displayHotspot.y}px` }}
+                    >
+                        <div className="absolute inset-0 rounded-full w-6 h-6 animate-ping bg-blue-400"></div>
+                    </div>
+                )}
+            </div>
 
-    const imageDisplay = (
-      <div className="relative">
-        {originalImageUrl && (
-            <img
-                key={originalImageUrl}
-                src={originalImageUrl}
-                alt="Original"
-                className="w-full h-auto object-contain max-h-[60vh] rounded-xl pointer-events-none"
-            />
+            <div className="w-full flex-shrink-0 max-w-5xl">
+              {renderActivePanel()}
+            </div>
+          </div>
         )}
-        <img
-            ref={imgRef}
-            key={currentImageUrl}
-            src={currentImageUrl}
-            alt="Current"
-            onClick={handleImageClick}
-            className={`absolute top-0 left-0 w-full h-auto object-contain max-h-[60vh] rounded-xl transition-opacity duration-200 ease-in-out ${isComparing ? 'opacity-0' : 'opacity-100'} ${activeTab === 'retouch' ? 'cursor-crosshair' : ''} ${activeTab === 'erase' ? 'pointer-events-none' : ''}`}
-        />
-        {activeTab === 'erase' && !isLoading && (
-            <canvas
-                ref={eraseCanvasRef}
-                onMouseDown={handleEraseMouseDown}
-                onMouseMove={handleEraseMouseMove}
-                onMouseUp={handleEraseMouseUp}
-                onMouseLeave={handleEraseMouseUp}
-                className="absolute top-0 left-0 cursor-crosshair z-20"
-            />
-        )}
-      </div>
-    );
-    
-    // For ReactCrop, we need a single image element. We'll use the current one.
-    const cropImageElement = (
-      <img 
-        ref={imgRef}
-        key={`crop-${currentImageUrl}`}
-        src={currentImageUrl} 
-        alt="Crop this image"
-        className="w-full h-auto object-contain max-h-[60vh] rounded-xl"
-      />
-    );
-
-
-    return (
-      <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-6 animate-fade-in">
-        <div className="relative w-full shadow-2xl rounded-xl overflow-hidden bg-black/20">
-            {isLoading && (
-                <div className="absolute inset-0 bg-black/70 z-30 flex flex-col items-center justify-center gap-4 animate-fade-in">
-                    <Spinner />
-                    <p className="text-gray-300">AI is working its magic...</p>
-                </div>
-            )}
-            
-            {activeTab === 'crop' ? (
-              <ReactCrop 
-                crop={crop} 
-                onChange={c => setCrop(c)} 
-                onComplete={c => setCompletedCrop(c)}
-                aspect={aspect}
-                className="max-h-[60vh]"
-              >
-                {cropImageElement}
-              </ReactCrop>
-            ) : imageDisplay }
-
-            {displayHotspot && !isLoading && activeTab === 'retouch' && (
-                <div 
-                    className="absolute rounded-full w-6 h-6 bg-blue-500/50 border-2 border-white pointer-events-none -translate-x-1/2 -translate-y-1/2 z-10"
-                    style={{ left: `${displayHotspot.x}px`, top: `${displayHotspot.y}px` }}
-                >
-                    <div className="absolute inset-0 rounded-full w-6 h-6 animate-ping bg-blue-400"></div>
-                </div>
-            )}
-        </div>
-        
-        <div className="w-full bg-gray-800/80 border border-gray-700/80 rounded-lg p-2 flex items-center justify-center gap-2 backdrop-blur-sm">
-            {(['retouch', 'erase', 'adjust', 'filters', 'crop', 'transform'] as Tab[]).map(tab => (
-                 <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`w-full capitalize font-semibold py-3 px-5 rounded-md transition-all duration-200 text-base ${
-                        activeTab === tab 
-                        ? 'bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-lg shadow-cyan-500/40' 
-                        : 'text-gray-300 hover:text-white hover:bg-white/10'
-                    }`}
-                >
-                    {tab}
-                </button>
-            ))}
-        </div>
-        
-        <div className="w-full">
-            {activeTab === 'retouch' && (
-                <div className="flex flex-col items-center gap-4">
-                    <p className="text-md text-gray-400">
-                        {editHotspot ? 'Great! Now describe your localized edit below.' : 'Click an area on the image to make a precise edit.'}
-                    </p>
-                    <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="w-full flex items-center gap-2">
-                        <input
-                            type="text"
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            placeholder={editHotspot ? "e.g., 'change my shirt color to blue'" : "First click a point on the image"}
-                            className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-lg p-5 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60"
-                            disabled={isLoading || !editHotspot}
-                        />
-                        <button 
-                            type="submit"
-                            className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-5 px-8 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner disabled:from-blue-800 disabled:to-blue-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
-                            disabled={isLoading || !prompt.trim() || !editHotspot}
-                        >
-                            Generate
-                        </button>
-                    </form>
-                </div>
-            )}
-            {activeTab === 'erase' && <ErasePanel onApplyErase={handleApplyErase} onClearErase={handleClearErase} isLoading={isLoading} canErase={erasePath.length > 0} />}
-            {activeTab === 'crop' && <CropPanel onApplyCrop={handleApplyCrop} onSetAspect={setAspect} isLoading={isLoading} isCropping={!!completedCrop?.width && completedCrop.width > 0} />}
-            {activeTab === 'adjust' && <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} />}
-            {activeTab === 'filters' && <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} />}
-            {activeTab === 'transform' && <TransformPanel onTransform={handleTransform} isLoading={isLoading} />}
-        </div>
-        
-        <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
-            <button 
-                onClick={handleUndo}
-                disabled={!canUndo}
-                className="flex items-center justify-center text-center bg-white/10 border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/30 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-white/5"
-                aria-label="Undo last action"
-            >
-                <UndoIcon className="w-5 h-5 mr-2" />
-                Undo
-            </button>
-            <button 
-                onClick={handleRedo}
-                disabled={!canRedo}
-                className="flex items-center justify-center text-center bg-white/10 border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/30 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-white/5"
-                aria-label="Redo last action"
-            >
-                <RedoIcon className="w-5 h-5 mr-2" />
-                Redo
-            </button>
-            
-            <div className="h-6 w-px bg-gray-600 mx-1 hidden sm:block"></div>
-
-            {canUndo && (
-              <button 
-                  onMouseDown={() => setIsComparing(true)}
-                  onMouseUp={() => setIsComparing(false)}
-                  onMouseLeave={() => setIsComparing(false)}
-                  onTouchStart={() => setIsComparing(true)}
-                  onTouchEnd={() => setIsComparing(false)}
-                  className="flex items-center justify-center text-center bg-white/10 border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/30 active:scale-95 text-base"
-                  aria-label="Press and hold to see original image"
-              >
-                  <EyeIcon className="w-5 h-5 mr-2" />
-                  Compare
-              </button>
-            )}
-
-            <button 
-                onClick={handleReset}
-                disabled={!canUndo}
-                className="text-center bg-transparent border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/10 hover:border-white/30 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-transparent"
-              >
-                Reset
-            </button>
-            <button 
-                onClick={handleUploadNew}
-                className="text-center bg-white/10 border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/30 active:scale-95 text-base"
-            >
-                Upload New
-            </button>
-
-            <button 
-                onClick={handleDownload}
-                className="flex-grow sm:flex-grow-0 ml-auto bg-gradient-to-br from-green-600 to-green-500 text-white font-bold py-3 px-5 rounded-md transition-all duration-300 ease-in-out shadow-lg shadow-green-500/20 hover:shadow-xl hover:shadow-green-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base"
-            >
-                Download Image
-            </button>
-        </div>
-      </div>
-    );
-  };
-  
-  return (
-    <div className="min-h-screen text-gray-100 flex flex-col">
-      <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-start' : 'items-center'}`}>
-        {renderContent()}
       </main>
     </div>
   );

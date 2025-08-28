@@ -32,7 +32,7 @@ const TransformPanel: React.FC<TransformPanelProps> = ({ onTransform, isLoading 
             key={t.name}
             onClick={() => onTransform(t.type)}
             disabled={isLoading}
-            className="w-full flex flex-col items-center justify-center gap-2 text-center bg-white/10 border border-transparent text-gray-200 font-semibold py-4 px-4 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/20 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex flex-col items-center justify-center gap-2 text-center bg-white/10 text-gray-200 font-semibold py-4 px-4 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <t.icon className="w-8 h-8" />
             <span>{t.name}</span>

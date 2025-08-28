@@ -22,7 +22,7 @@ const ErasePanel: React.FC<ErasePanelProps> = ({ onApplyErase, onClearErase, isL
         <button
           onClick={onClearErase}
           disabled={isLoading || !canErase}
-          className="w-full bg-white/10 border border-white/20 text-gray-200 font-semibold py-4 px-6 rounded-lg transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/30 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-white/10 text-gray-200 font-semibold py-4 px-6 rounded-lg transition-all duration-200 ease-in-out hover:bg-white/20 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Clear
         </button>
