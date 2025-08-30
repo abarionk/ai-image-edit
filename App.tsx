@@ -6,19 +6,20 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
-import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateErasedImage } from './services/geminiService';
+import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateErasedImage, generateUpscaledImage } from './services/geminiService';
 import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
 import TransformPanel from './components/TransformPanel';
 import ErasePanel from './components/ErasePanel';
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, EraserIcon, SunIcon, PaletteIcon, CropIcon, FlipHorizontalIcon, UploadIcon, DownloadIcon, ResetIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, EraserIcon, SunIcon, PaletteIcon, CropIcon, FlipHorizontalIcon, UploadIcon, DownloadIcon, ResetIcon, SparklesIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
+import GenerateScreen from './components/GenerateScreen';
 import ZoomControls from './components/ZoomControls';
 
 // Helper to convert a data URL string to a File object
-const dataURLtoFile = (dataurl: string, filename: string): File => {
+export const dataURLtoFile = (dataurl: string, filename: string): File => {
     const arr = dataurl.split(',');
     if (arr.length < 2) throw new Error("Invalid data URL");
     const mimeMatch = arr[0].match(/:(.*?);/);
@@ -35,8 +36,10 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
 }
 
 type Tab = 'retouch' | 'erase' | 'adjust' | 'filters' | 'crop' | 'transform';
+type AppMode = 'start' | 'editor' | 'generator';
 
 const App: React.FC = () => {
+  const [appMode, setAppMode] = useState<AppMode>('start');
   const [history, setHistory] = useState<File[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [prompt, setPrompt] = useState<string>('');
@@ -69,6 +72,34 @@ const App: React.FC = () => {
 
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+
+  const resetState = useCallback(() => {
+    setHistory([]);
+    setHistoryIndex(-1);
+    setError(null);
+    setPrompt('');
+    setEditHotspot(null);
+    setDisplayHotspot(null);
+    setActiveTab('retouch');
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+    setErasePath([]);
+    erasePathRef.current = [];
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  }, []);
+
+  const startEditing = useCallback((file: File) => {
+    resetState();
+    setHistory([file]);
+    setHistoryIndex(0);
+    setAppMode('editor');
+  }, [resetState]);
+
+  const startGenerating = useCallback(() => {
+    resetState();
+    setAppMode('generator');
+  }, [resetState]);
 
   const resetView = useCallback(() => {
     setScale(1);
@@ -159,19 +190,6 @@ const App: React.FC = () => {
     setCompletedCrop(undefined);
     handleClearErase();
   }, [history, historyIndex, handleClearErase]);
-
-  const handleImageUpload = useCallback((file: File) => {
-    setError(null);
-    setHistory([file]);
-    setHistoryIndex(0);
-    setEditHotspot(null);
-    setDisplayHotspot(null);
-    setActiveTab('retouch');
-    setCrop(undefined);
-    setCompletedCrop(undefined);
-    handleClearErase();
-    resetView();
-  }, [handleClearErase, resetView]);
 
   const handleGenerate = useCallback(async () => {
     if (!currentImage) {
@@ -309,6 +327,28 @@ const App: React.FC = () => {
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to apply the adjustment. ${errorMessage}`);
+        console.error(err);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [currentImage, addImageToHistory]);
+
+  const handleApplyUpscale = useCallback(async () => {
+    if (!currentImage) {
+      setError('No image loaded to apply an upscale to.');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+        const upscaledImageUrl = await generateUpscaledImage(currentImage);
+        const newImageFile = dataURLtoFile(upscaledImageUrl, `upscaled-${Date.now()}.png`);
+        addImageToHistory(newImageFile);
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(`Failed to apply the upscale. ${errorMessage}`);
         console.error(err);
     } finally {
         setIsLoading(false);
@@ -463,16 +503,10 @@ const App: React.FC = () => {
     }
   }, [history, handleClearErase, resetView]);
 
-  const handleUploadNew = useCallback(() => {
-      setHistory([]);
-      setHistoryIndex(-1);
-      setError(null);
-      setPrompt('');
-      setEditHotspot(null);
-      setDisplayHotspot(null);
-      handleClearErase();
-      resetView();
-  }, [handleClearErase, resetView]);
+  const handleStartOver = useCallback(() => {
+    resetState();
+    setAppMode('start');
+  }, [resetState]);
 
   const handleDownload = useCallback(() => {
       if (currentImage) {
@@ -486,12 +520,6 @@ const App: React.FC = () => {
       }
   }, [currentImage]);
   
-  const handleFileSelect = (files: FileList | null) => {
-    if (files && files[0]) {
-      handleImageUpload(files[0]);
-    }
-  };
-
   const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (activeTab !== 'retouch' || !imgRef.current || !imageContainerRef.current) return;
     
@@ -659,6 +687,22 @@ const App: React.FC = () => {
       setPosition({ x: newX, y: newY });
   };
 
+  if (appMode === 'start') {
+    return (
+      <main className="h-screen w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center items-center">
+        <StartScreen onSelectEdit={startEditing} onSelectGenerate={startGenerating} />
+      </main>
+    );
+  }
+  
+  if (appMode === 'generator') {
+    return (
+       <main className="h-screen w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center items-center">
+        <GenerateScreen onImageGenerated={startEditing} onStartOver={handleStartOver} />
+      </main>
+    )
+  }
+
   const tabs: { id: Tab, name: string, icon: React.FC<{className?: string}> }[] = [
     { id: 'retouch', name: 'Retouch', icon: MagicWandIcon },
     { id: 'erase', name: 'Erase', icon: EraserIcon },
@@ -667,16 +711,6 @@ const App: React.FC = () => {
     { id: 'crop', name: 'Crop', icon: CropIcon },
     { id: 'transform', name: 'Transform', icon: FlipHorizontalIcon },
   ];
-
-  if (!currentImageUrl) {
-    return (
-      <div className="h-screen text-gray-100 flex flex-col">
-        <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center items-center`}>
-          <StartScreen onFileSelect={handleFileSelect} />
-        </main>
-      </div>
-    );
-  }
 
   const imageDisplay = (
     <div
@@ -709,7 +743,7 @@ const App: React.FC = () => {
             <img
                 ref={imgRef}
                 key={currentImageUrl}
-                src={currentImageUrl}
+                src={currentImageUrl!}
                 alt="Current"
                 className={`w-full h-full object-contain transition-opacity duration-200 ease-in-out ${isComparing ? 'opacity-0' : 'opacity-100'}`}
                 style={{ willChange: 'transform' }}
@@ -749,7 +783,7 @@ const App: React.FC = () => {
     <img 
       ref={imgRef}
       key={`crop-${currentImageUrl}`}
-      src={currentImageUrl} 
+      src={currentImageUrl!} 
       alt="Crop this image"
       className="w-full h-full object-contain rounded-xl"
     />
@@ -787,7 +821,7 @@ const App: React.FC = () => {
       case 'crop':
         return <CropPanel onApplyCrop={handleApplyCrop} onSetAspect={setAspect} isLoading={isLoading} isCropping={!!completedCrop?.width && completedCrop.width > 0} />;
       case 'adjust':
-        return <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} />;
+        return <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} onApplyUpscale={handleApplyUpscale} isLoading={isLoading} />;
       case 'filters':
         return <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} />;
       case 'transform':
@@ -806,6 +840,17 @@ const App: React.FC = () => {
           </div>
           <nav className="flex-grow">
               <ul className="flex flex-row md:flex-col justify-around md:justify-start gap-2">
+                   <li>
+                      <button
+                          onClick={startGenerating}
+                          className="w-full flex flex-col items-center gap-1 p-3 rounded-lg transition-all duration-200 text-gray-400 hover:bg-white/10 hover:text-white"
+                          aria-label="Generate Image"
+                      >
+                          <SparklesIcon className="w-7 h-7" />
+                          <span className="text-xs font-semibold capitalize">Generate</span>
+                      </button>
+                  </li>
+                  <div className="h-full md:h-auto w-px md:w-full bg-gray-700 mx-2 md:mx-0 md:my-2"></div>
                   {tabs.map(tab => (
                       <li key={tab.id}>
                           <button
@@ -844,7 +889,7 @@ const App: React.FC = () => {
                 
                 <div className="h-full md:h-auto w-px md:w-full bg-gray-700 mx-2 md:mx-0 md:my-2"></div>
                 
-                <button onClick={handleUploadNew} className="p-3 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white" aria-label="Upload New Image"><UploadIcon className="w-6 h-6 mx-auto" /></button>
+                <button onClick={handleStartOver} className="p-3 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white" aria-label="Start Over"><UploadIcon className="w-6 h-6 mx-auto" /></button>
                 <button onClick={handleDownload} className="p-3 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white" aria-label="Download Image"><DownloadIcon className="w-6 h-6 mx-auto" /></button>
           </div>
       </aside>

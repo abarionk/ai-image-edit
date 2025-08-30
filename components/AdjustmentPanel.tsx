@@ -4,14 +4,15 @@
 */
 
 import React, { useState } from 'react';
-import { MagicWandIcon, RemoveBgIcon, BeautifyIcon } from './icons';
+import { MagicWandIcon, RemoveBgIcon, BeautifyIcon, UpscaleIcon } from './icons';
 
 interface AdjustmentPanelProps {
   onApplyAdjustment: (prompt: string) => void;
+  onApplyUpscale: () => void;
   isLoading: boolean;
 }
 
-const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, isLoading }) => {
+const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, onApplyUpscale, isLoading }) => {
   const [selectedPresetPrompt, setSelectedPresetPrompt] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState('');
   const [showBeautifyOptions, setShowBeautifyOptions] = useState(false);
@@ -53,6 +54,11 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, is
     onApplyAdjustment("Remove the background from the image, keeping only the main subject. The new background must be transparent.");
   };
 
+  const handleUpscale = () => {
+    setShowBeautifyOptions(false);
+    onApplyUpscale();
+  };
+
   const handleBeautifyFemale = () => {
     onApplyAdjustment("Subtly beautify the female subject in the photo. Smooth skin while retaining natural texture, slightly brighten the eyes and teeth, add a touch of color to the lips and cheeks, and enhance the hair's shine. The overall effect should be natural and flattering, not artificial.");
     setShowBeautifyOptions(false);
@@ -67,7 +73,7 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, is
     <div className="w-full bg-gray-800/50 border border-gray-700 rounded-lg p-4 flex flex-col gap-4 animate-fade-in backdrop-blur-sm">
       <h3 className="text-lg font-semibold text-center text-gray-300">Adjustments</h3>
       
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <button
           onClick={handleAutoAdjust}
           disabled={isLoading}
@@ -82,7 +88,7 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, is
           className="w-full flex items-center justify-center gap-3 bg-gradient-to-br from-pink-600 to-rose-500 text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-rose-500/20 hover:shadow-xl hover:shadow-rose-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base disabled:from-rose-800 disabled:to-rose-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
         >
           <RemoveBgIcon className="w-5 h-5" />
-          Remove Background
+          Remove BG
         </button>
          <button
           onClick={() => setShowBeautifyOptions(!showBeautifyOptions)}
@@ -91,6 +97,14 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, is
         >
           <BeautifyIcon className="w-5 h-5" />
           Beautify
+        </button>
+        <button
+          onClick={handleUpscale}
+          disabled={isLoading}
+          className="w-full flex items-center justify-center gap-3 bg-gradient-to-br from-green-500 to-teal-500 text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-teal-500/20 hover:shadow-xl hover:shadow-teal-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base disabled:from-teal-800 disabled:to-teal-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
+        >
+          <UpscaleIcon className="w-5 h-5" />
+          AI Upscale
         </button>
       </div>
 

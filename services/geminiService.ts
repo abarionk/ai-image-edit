@@ -64,6 +64,44 @@ const handleApiResponse = (
 };
 
 /**
+ * Generates an image from a text prompt.
+ * @param prompt The text prompt describing the image.
+ * @param aspectRatio The desired aspect ratio.
+ * @returns A promise that resolves to the data URL of the generated image.
+ */
+export const generateImageFromPrompt = async (
+    prompt: string,
+    aspectRatio: "1:1" | "16:9" | "9:16" | "4:3" | "3:4"
+): Promise<string> => {
+    console.log(`Starting image generation with prompt: "${prompt}"`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+
+    const response = await ai.models.generateImages({
+        model: 'imagen-4.0-generate-001',
+        prompt: prompt,
+        config: {
+            numberOfImages: 1,
+            outputMimeType: 'image/png',
+            aspectRatio: aspectRatio,
+        },
+    });
+
+    console.log('Received response from image generation model.', response);
+
+    if (response.generatedImages && response.generatedImages.length > 0) {
+        const image = response.generatedImages[0];
+        if (image.image?.imageBytes) {
+             return `data:image/png;base64,${image.image.imageBytes}`;
+        }
+    }
+    
+    // Fallback error for unexpected responses
+    const errorMessage = "Image generation failed. The model did not return a valid image. This could be due to a safety policy violation or an internal error.";
+    console.error(errorMessage, { response });
+    throw new Error(errorMessage);
+};
+
+/**
  * Generates an edited image using generative AI based on a text prompt and a specific point.
  * @param originalImage The original image file.
  * @param userPrompt The text prompt describing the desired edit.
@@ -174,6 +212,37 @@ Output: Return ONLY the final adjusted image. Do not return text.`;
     console.log('Received response from model for adjustment.', response);
     
     return handleApiResponse(response, 'adjustment');
+};
+
+/**
+ * Generates an upscaled image using generative AI.
+ * @param originalImage The original image file.
+ * @returns A promise that resolves to the data URL of the upscaled image.
+ */
+export const generateUpscaledImage = async (
+    originalImage: File,
+): Promise<string> => {
+    console.log(`Starting AI upscaling.`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    
+    const originalImagePart = await fileToPart(originalImage);
+    const prompt = `You are an expert photo editor AI specializing in image upscaling. 
+Your task is to increase the resolution of the provided image by 2x. 
+Enhance the details and sharpness intelligently, avoiding artifacts. 
+The final image must be exactly double the original dimensions. 
+Do not change the content, colors, or composition in any other way.
+
+Output: Return ONLY the final upscaled image. Do not return text.`;
+    const textPart = { text: prompt };
+
+    console.log('Sending image and upscale prompt to the model...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [originalImagePart, textPart] },
+    });
+    console.log('Received response from model for upscale.', response);
+    
+    return handleApiResponse(response, 'upscale');
 };
 
 /**

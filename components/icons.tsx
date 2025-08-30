@@ -130,3 +130,15 @@ export const BeautifyIcon: React.FC<{ className?: string }> = ({ className }) =>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.25 18.25L18 21.75l-.25-3.5a1.5 1.5 0 011.496-1.496L21.75 15l-3.5.25a1.5 1.5 0 01-1.496 1.496L16.5 18.75l.25-3.5M21.75 9l-3.5-.25a1.5 1.5 0 01-1.496-1.496L16.5 3.75l.25 3.5a1.5 1.5 0 011.496 1.496L21.75 9z" />
     </svg>
 );
+
+export const SparklesIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.25 18.25l.25 3.5.25-3.5a1.5 1.5 0 0 1 1.5-1.5l3.5.25-3.5.25a1.5 1.5 0 0 1-1.5-1.5l.25-3.5.25 3.5a1.5 1.5 0 0 1-1.5 1.5l-3.5-.25 3.5-.25a1.5 1.5 0 0 1 1.5 1.5Z" />
+    </svg>
+);
+
+export const UpscaleIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
+    </svg>
+);
