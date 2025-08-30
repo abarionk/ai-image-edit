@@ -124,3 +124,9 @@ export const MinusIcon: React.FC<{ className?: string }> = ({ className }) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
     </svg>
 );
+
+export const BeautifyIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.25 18.25L18 21.75l-.25-3.5a1.5 1.5 0 011.496-1.496L21.75 15l-3.5.25a1.5 1.5 0 01-1.496 1.496L16.5 18.75l.25-3.5M21.75 9l-3.5-.25a1.5 1.5 0 01-1.496-1.496L16.5 3.75l.25 3.5a1.5 1.5 0 011.496 1.496L21.75 9z" />
+    </svg>
+);
