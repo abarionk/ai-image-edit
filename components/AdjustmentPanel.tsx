@@ -4,7 +4,7 @@
 */
 
 import React, { useState } from 'react';
-import { MagicWandIcon, RemoveBgIcon, BeautifyIcon, UpscaleIcon } from './icons';
+import { MagicWandIcon, RemoveBgIcon, BeautifyIcon, UpscaleIcon, HDRIcon } from './icons';
 
 interface AdjustmentPanelProps {
   onApplyAdjustment: (prompt: string) => void;
@@ -54,6 +54,11 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, on
     onApplyAdjustment("Remove the background from the image, keeping only the main subject. The new background must be transparent.");
   };
 
+  const handleHDREffect = () => {
+    setShowBeautifyOptions(false);
+    onApplyAdjustment("Apply a High Dynamic Range (HDR) effect to the image. Enhance the details in both the shadows and highlights, increase local contrast, and make the colors more vibrant, without making it look unnatural or oversaturated.");
+  };
+
   const handleUpscale = () => {
     setShowBeautifyOptions(false);
     onApplyUpscale();
@@ -73,7 +78,7 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, on
     <div className="w-full bg-gray-800/50 border border-gray-700 rounded-lg p-4 flex flex-col gap-4 animate-fade-in backdrop-blur-sm">
       <h3 className="text-lg font-semibold text-center text-gray-300">Adjustments</h3>
       
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <button
           onClick={handleAutoAdjust}
           disabled={isLoading}
@@ -89,6 +94,14 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, on
         >
           <RemoveBgIcon className="w-5 h-5" />
           Remove BG
+        </button>
+        <button
+          onClick={handleHDREffect}
+          disabled={isLoading}
+          className="w-full flex items-center justify-center gap-3 bg-gradient-to-br from-orange-500 to-amber-500 text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base disabled:from-amber-800 disabled:to-amber-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
+        >
+          <HDRIcon className="w-5 h-5" />
+          HDR Effect
         </button>
          <button
           onClick={() => setShowBeautifyOptions(!showBeautifyOptions)}
