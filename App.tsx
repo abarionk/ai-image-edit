@@ -40,6 +40,7 @@ type AppMode = 'start' | 'editor' | 'generator';
 
 const App: React.FC = () => {
   const [appMode, setAppMode] = useState<AppMode>('start');
+  const [previousAppMode, setPreviousAppMode] = useState<AppMode | null>(null);
   const [history, setHistory] = useState<File[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [prompt, setPrompt] = useState<string>('');
@@ -87,6 +88,7 @@ const App: React.FC = () => {
     erasePathRef.current = [];
     setScale(1);
     setPosition({ x: 0, y: 0 });
+    setPreviousAppMode(null);
   }, []);
 
   const startEditing = useCallback((file: File) => {
@@ -100,6 +102,11 @@ const App: React.FC = () => {
     resetState();
     setAppMode('generator');
   }, [resetState]);
+  
+  const switchToGenerator = useCallback(() => {
+    setPreviousAppMode(appMode);
+    setAppMode('generator');
+  }, [appMode]);
 
   const resetView = useCallback(() => {
     setScale(1);
@@ -507,6 +514,13 @@ const App: React.FC = () => {
     resetState();
     setAppMode('start');
   }, [resetState]);
+  
+  const handleBack = useCallback(() => {
+    if (previousAppMode) {
+        setAppMode(previousAppMode);
+        setPreviousAppMode(null);
+    }
+  }, [previousAppMode]);
 
   const handleDownload = useCallback(() => {
       if (currentImage) {
@@ -698,7 +712,7 @@ const App: React.FC = () => {
   if (appMode === 'generator') {
     return (
        <main className="h-screen w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center items-center">
-        <GenerateScreen onImageGenerated={startEditing} onStartOver={handleStartOver} />
+        <GenerateScreen onImageGenerated={startEditing} onStartOver={handleStartOver} onBack={previousAppMode === 'editor' ? handleBack : undefined} />
       </main>
     )
   }
@@ -842,7 +856,7 @@ const App: React.FC = () => {
               <ul className="flex flex-row md:flex-col justify-around md:justify-start gap-2">
                    <li>
                       <button
-                          onClick={startGenerating}
+                          onClick={switchToGenerator}
                           className="w-full flex flex-col items-center gap-1 p-3 rounded-lg transition-all duration-200 text-gray-400 hover:bg-white/10 hover:text-white"
                           aria-label="Generate Image"
                       >

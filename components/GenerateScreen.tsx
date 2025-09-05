@@ -6,17 +6,18 @@
 import React, { useState } from 'react';
 import { generateImageFromPrompt } from '../services/geminiService';
 import Spinner from './Spinner';
-import { SparklesIcon, DownloadIcon, MagicWandIcon, UploadIcon } from './icons';
+import { SparklesIcon, DownloadIcon, MagicWandIcon, UploadIcon, ArrowLeftIcon } from './icons';
 import { dataURLtoFile } from '../App';
 
 interface GenerateScreenProps {
   onImageGenerated: (file: File) => void;
   onStartOver: () => void;
+  onBack?: () => void;
 }
 
 type AspectRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4";
 
-const GenerateScreen: React.FC<GenerateScreenProps> = ({ onImageGenerated, onStartOver }) => {
+const GenerateScreen: React.FC<GenerateScreenProps> = ({ onImageGenerated, onStartOver, onBack }) => {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +72,10 @@ const GenerateScreen: React.FC<GenerateScreenProps> = ({ onImageGenerated, onSta
   const aspects: { name: AspectRatio }[] = [
     { name: '1:1' }, { name: '16:9' }, { name: '9:16' }, { name: '4:3' }, { name: '3:4' },
   ];
+  
+  const backButtonAction = onBack || onStartOver;
+  const BackButtonIcon = onBack ? ArrowLeftIcon : UploadIcon;
+  const backButtonText = onBack ? 'Back to Editor' : 'Back to Main Menu';
 
   if (error) {
     return (
@@ -169,9 +174,9 @@ const GenerateScreen: React.FC<GenerateScreenProps> = ({ onImageGenerated, onSta
         </div>
       </form>
 
-      <button onClick={onStartOver} className="mt-8 flex items-center gap-2 text-gray-400 hover:text-white transition">
-        <UploadIcon className="w-5 h-5"/>
-        <span>Back to Main Menu</span>
+      <button onClick={backButtonAction} className="mt-8 flex items-center gap-2 text-gray-400 hover:text-white transition">
+        <BackButtonIcon className="w-5 h-5"/>
+        <span>{backButtonText}</span>
       </button>
 
     </div>
