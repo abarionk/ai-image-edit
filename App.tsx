@@ -57,6 +57,8 @@ const App: React.FC = () => {
   
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
   const [erasePath, setErasePath] = useState<Array<{x: number, y: number}>>([]);
+  const [brushSize, setBrushSize] = useState<number>(30);
+  const [brushOpacity, setBrushOpacity] = useState<number>(0.8);
   
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -266,8 +268,8 @@ const App: React.FC = () => {
 
         // Draw the path on the mask canvas
         const path = erasePathRef.current;
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 30 * scaleX; // Scale line width for a thick mask
+        ctx.strokeStyle = `rgba(255, 255, 255, ${brushOpacity})`;
+        ctx.lineWidth = brushSize * scaleX;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         
@@ -294,7 +296,7 @@ const App: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [currentImage, addImageToHistory]);
+  }, [currentImage, addImageToHistory, brushSize, brushOpacity]);
   
   const handleApplyFilter = useCallback(async (filterPrompt: string) => {
     if (!currentImage) {
@@ -586,8 +588,8 @@ const App: React.FC = () => {
       ctx.beginPath();
       ctx.moveTo(lastPoint.x, lastPoint.y);
       ctx.lineTo(x, y);
-      ctx.strokeStyle = 'rgba(74, 144, 226, 0.8)';
-      ctx.lineWidth = 20;
+      ctx.strokeStyle = `rgba(74, 144, 226, ${brushOpacity})`;
+      ctx.lineWidth = brushSize;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.stroke();
@@ -831,7 +833,7 @@ const App: React.FC = () => {
           </div>
         );
       case 'erase':
-        return <ErasePanel onApplyErase={handleApplyErase} onClearErase={handleClearErase} isLoading={isLoading} canErase={erasePath.length > 0} />;
+        return <ErasePanel onApplyErase={handleApplyErase} onClearErase={handleClearErase} isLoading={isLoading} canErase={erasePath.length > 0} brushSize={brushSize} setBrushSize={setBrushSize} brushOpacity={brushOpacity} setBrushOpacity={setBrushOpacity} />;
       case 'crop':
         return <CropPanel onApplyCrop={handleApplyCrop} onSetAspect={setAspect} isLoading={isLoading} isCropping={!!completedCrop?.width && completedCrop.width > 0} />;
       case 'adjust':

@@ -263,7 +263,7 @@ export const generateErasedImage = async (
 
     const prompt = `You are an expert photo editor AI. Your task is to perform an inpainting operation on the provided original image.
 You are given two images: the original and a mask.
-Your goal is to realistically remove the object or area indicated by the white region in the mask image.
+Your goal is to realistically remove the object or area indicated by the mask image. The mask uses shades of white and gray: pure white indicates 100% removal, and shades of gray indicate partial removal/blending. Black areas should be untouched.
 Fill in the background seamlessly and naturally, matching the lighting, texture, and style of the surrounding area.
 
 Output: Return ONLY the final edited image. Do not return text.`;
