@@ -4,7 +4,7 @@
 */
 
 import React, { useState } from 'react';
-import { MagicWandIcon, RemoveBgIcon, BeautifyIcon, UpscaleIcon, HDRIcon, ContrastIcon } from './icons';
+import { MagicWandIcon, RemoveBgIcon, BeautifyIcon, UpscaleIcon, HDRIcon, ContrastIcon, SharpenIcon } from './icons';
 
 interface AdjustmentPanelProps {
   onApplyAdjustment: (prompt: string) => void;
@@ -66,6 +66,11 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, on
   const handleUpscale = () => {
     setActiveOptions(null);
     onApplyUpscale();
+  };
+
+  const handleSharpen = () => {
+    setActiveOptions(null);
+    onApplyAdjustment("Sharpen the image to bring out finer details, ensuring edges remain crisp and avoiding over-sharpening artifacts.");
   };
   
   const handleIncreaseContrast = () => {
@@ -132,6 +137,14 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, on
         >
           <UpscaleIcon className="w-5 h-5" />
           AI Upscale
+        </button>
+        <button
+          onClick={handleSharpen}
+          disabled={isLoading}
+          className="w-full flex items-center justify-center gap-3 bg-gradient-to-br from-sky-600 to-sky-500 text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-sky-500/20 hover:shadow-xl hover:shadow-sky-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base disabled:from-sky-800 disabled:to-sky-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
+        >
+          <SharpenIcon className="w-5 h-5" />
+          Sharpen
         </button>
         <button
           onClick={() => handleOptionToggle('contrast')}
